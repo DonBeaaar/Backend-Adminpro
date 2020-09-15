@@ -7,16 +7,16 @@ const { generarJWT } = require('../helpers/jwt');
 const { verifyGoogleSignIn } = require('../helpers/google-verify');
 
 
-const login = async( req, res = response ) => {
+const login = async (req, res = response) => {
 
     const { email, password } = req.body;
 
     try {
-        
+
         // Verificar email
         const usuarioDB = await Usuario.findOne({ email });
 
-        if ( !usuarioDB ) {
+        if (!usuarioDB) {
             return res.status(404).json({
                 ok: false,
                 msg: 'Email no encontrado'
@@ -24,8 +24,8 @@ const login = async( req, res = response ) => {
         }
 
         // Verificar contraseña
-        const validPassword = bcrypt.compareSync( password, usuarioDB.password );
-        if ( !validPassword ) {
+        const validPassword = bcrypt.compareSync(password, usuarioDB.password);
+        if (!validPassword) {
             return res.status(400).json({
                 ok: false,
                 msg: 'Contraseña no válida'
@@ -33,7 +33,7 @@ const login = async( req, res = response ) => {
         }
 
         // Generar el TOKEN - JWT
-        const token = await generarJWT( usuarioDB.id );
+        const token = await generarJWT(usuarioDB.id);
 
 
         res.json({
@@ -52,21 +52,21 @@ const login = async( req, res = response ) => {
 
 }
 
-const googleSignIn = async( req, res = response )=>{
+const googleSignIn = async (req, res = response) => {
 
     const tokenGoogle = req.body.token
 
     try {
-        const {name, email, picture} = await verifyGoogleSignIn(tokenGoogle);
+        const { name, email, picture } = await verifyGoogleSignIn(tokenGoogle);
 
-        const usuarioDB = await Usuario.findOne({email});
+        const usuarioDB = await Usuario.findOne({ email });
         let usuario
 
         if (!usuarioDB) {
             // Si no existe
-            usuario = new Usuario({nombre: name, email, password: '@@@', img: picture, google: true});
+            usuario = new Usuario({ nombre: name, email, password: '@@@', img: picture, google: true });
         }
-        else{
+        else {
             usuario = usuarioDB;
             usuario.password = '@@@';
             usuario.google = true;
@@ -74,26 +74,38 @@ const googleSignIn = async( req, res = response )=>{
 
         await usuario.save();
 
-        const token = await generarJWT( usuario.id );
+        const token = await generarJWT(usuario.id);
 
 
+        res.json({
+            ok: true,
+            msg: 'Google Sign In',
+            token
+        });
+    } catch (error) {
+        res.status(401).json({
+            ok: false,
+            msg: 'Token de Google no valido'
+
+        })
+    }
+}
+
+const renewJWT = async (req,res=response) =>{
+
+    const uid = req.uid;
+
+    const token = await generarJWT(uid);
 
     res.json({
         ok:true,
-        msg: 'Google Sign In',
         token
-    });
-    } catch (error) {
-        res.status(401).json({
-            ok:false,
-            msg: 'Token de Google no valido'
-            
-        })
-    }
+    })
 }
 
 
 module.exports = {
     login,
-    googleSignIn
+    googleSignIn,
+    renewJWT
 }
